@@ -1,4 +1,4 @@
-What is there:
+What is implemented:
 
 - Abstracted account with the check for owner's signature
 - Factory of those accounts, calling of which happens in EntryPoint
