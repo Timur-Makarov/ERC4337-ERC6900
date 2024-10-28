@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {Script} from "../lib/forge-std/src/Script.sol";
 import {EntryPoint} from "../lib/account-abstraction/contracts/core/EntryPoint.sol";
+import {Script} from "../lib/forge-std/src/Script.sol";
 
 contract SetupHelper is Script {
     struct NetworkConfig {

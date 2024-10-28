@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {IPaymaster} from "../lib/account-abstraction/contracts/interfaces/IPaymaster.sol";
-import {PackedUserOperation} from "../lib/account-abstraction/contracts/interfaces/PackedUserOperation.sol";
-import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
-import {MessageHashUtils} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
-import {ECDSA} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
-import {SIG_VALIDATION_SUCCESS, SIG_VALIDATION_FAILED} from "../lib/account-abstraction/contracts/core/Helpers.sol";
+import {SIG_VALIDATION_FAILED, SIG_VALIDATION_SUCCESS} from "../lib/account-abstraction/contracts/core/Helpers.sol";
 import {UserOperationLib} from "../lib/account-abstraction/contracts/core/UserOperationLib.sol";
 import {IEntryPoint} from "../lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {EIP712} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol";
+import {IPaymaster} from "../lib/account-abstraction/contracts/interfaces/IPaymaster.sol";
+import {PackedUserOperation} from "../lib/account-abstraction/contracts/interfaces/PackedUserOperation.sol";
+
 import {console} from "../lib/forge-std/src/console.sol";
+import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {ECDSA} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
+import {EIP712} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol";
+import {MessageHashUtils} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
 
 contract Paymaster is IPaymaster, Ownable, EIP712 {
     error Paymaster_NotFromEntryPoint();
@@ -35,8 +36,13 @@ contract Paymaster is IPaymaster, Ownable, EIP712 {
         _;
     }
 
-    function validatePaymasterUserOp(PackedUserOperation calldata userOp, bytes32, uint256)
+    function validatePaymasterUserOp(
+        PackedUserOperation calldata userOp,
+        bytes32,
+        uint256
+    )
         external
+        view
         onlyEntryPoint
         returns (bytes memory context, uint256 validationData)
     {
@@ -44,12 +50,18 @@ contract Paymaster is IPaymaster, Ownable, EIP712 {
         validationData = _validatePaymasterSignature(userOp);
     }
 
-    function postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost, uint256 actualUserOpFeePerGas)
+    function postOp(
+        PostOpMode mode,
+        bytes calldata context,
+        uint256 actualGasCost,
+        uint256 actualUserOpFeePerGas
+    )
         external
     {}
 
     function _validatePaymasterSignature(PackedUserOperation calldata userOp)
         internal
+        view
         returns (uint256 validationData)
     {
         uint256 offset = 52;
@@ -71,14 +83,5 @@ contract Paymaster is IPaymaster, Ownable, EIP712 {
         }
 
         return SIG_VALIDATION_SUCCESS;
-    }
-
-    function splitSignature(bytes memory signature) internal returns (bytes32 r, bytes32 s, uint8 v) {
-        require(signature.length == 65, "Invalid Signature Length");
-        assembly {
-            r := mload(add(signature, 32))
-            s := mload(add(signature, 64))
-            v := byte(0, mload(add(signature, 96)))
-        }
     }
 }

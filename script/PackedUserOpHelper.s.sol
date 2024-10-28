@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
+import {IEntryPoint} from "../lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "../lib/account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {Script} from "../lib/forge-std/src/Script.sol";
-import {SetupHelper} from "./SetupHelper.s.sol";
-import {IEntryPoint} from "../lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {MessageHashUtils} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
-import {EIP712} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol";
+
 import {console} from "../lib/forge-std/src/console.sol";
+import {EIP712} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol";
+import {MessageHashUtils} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol";
+import {SetupHelper} from "./SetupHelper.s.sol";
 
 contract PackedUserOpHelper is Script {
     bytes32 public constant SIGNATURE_TYPEHASH =
@@ -25,15 +26,18 @@ contract PackedUserOpHelper is Script {
         uint256 nonce,
         bytes memory initCode,
         address paymaster
-    ) public returns (PackedUserOperation memory) {
+    )
+        public
+        returns (PackedUserOperation memory)
+    {
         PackedUserOperation memory userOp = _generateUnsignedUserOperation(callData, sender, nonce, initCode);
         SetupHelper setupHelper = new SetupHelper();
 
         if (paymaster != address(0)) {
             {
                 uint256 timeToExpiration = vm.getBlockTimestamp() + 12 * 5;
-                bytes32 hash = keccak256(abi.encode(SIGNATURE_TYPEHASH, sender, timeToExpiration, nonce));
 
+                bytes32 hash = keccak256(abi.encode(SIGNATURE_TYPEHASH, sender, timeToExpiration, nonce));
                 bytes32 digest = _hashTypedDataV4(paymaster, hash);
 
                 uint8 v;
@@ -76,7 +80,12 @@ contract PackedUserOpHelper is Script {
         return userOp;
     }
 
-    function _generateUnsignedUserOperation(bytes memory callData, address sender, uint256 nonce, bytes memory initCode)
+    function _generateUnsignedUserOperation(
+        bytes memory callData,
+        address sender,
+        uint256 nonce,
+        bytes memory initCode
+    )
         internal
         pure
         returns (PackedUserOperation memory)
