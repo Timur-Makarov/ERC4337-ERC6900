@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {IEntryPoint} from "../lib/account-abstraction/contracts/interfaces/IEntryPoint.sol";
 import {PackedUserOperation} from "../lib/account-abstraction/contracts/interfaces/PackedUserOperation.sol";
 import {Test} from "../lib/forge-std/src/Test.sol";
-
 import {console} from "../lib/forge-std/src/console.sol";
 import {ERC20Mock} from "../lib/openzeppelin-contracts/contracts/mocks/token/ERC20Mock.sol";
 import {ECDSA} from "../lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol";
@@ -15,16 +14,16 @@ import {SetupHelper} from "../script/SetupHelper.s.sol";
 import {AbstractedAccount} from "../src/AbstractedAccount.sol";
 import {AccountFactory} from "../src/AccountFactory.sol";
 import {IAbstractedAccount} from "../src/IAbstractedAccount.sol";
-
-import {TestHelper, TestHelperLib} from "./TestHelper.t.sol";
+import "./TestHelper.t.sol";
 
 contract AccountTest is Test {
     TestHelper public th;
-    TestHelperLib.TestHelperVars public thv;
+    TestHelperVars public thv;
 
     function setUp() public {
         th = new TestHelper();
         thv = th.getTestVars();
+        vm.deal(thv.config.wallet, 100e18);
     }
 
     function testOnlyEntryPointCanExecute() public {
@@ -32,17 +31,15 @@ contract AccountTest is Test {
         uint256 value = 0;
         bytes memory data = abi.encodeWithSelector(ERC20Mock.mint.selector, thv.accAddress, 100);
 
-        vm.prank(thv.account.owner());
+        vm.prank(thv.config.wallet);
 
         vm.expectRevert(AbstractedAccount.AbstractedAccount_NotFromEntryPoint.selector);
         thv.account.execute(dest, value, data);
-
-        vm.stopPrank();
     }
 
     function testRecoverSignedOp() public {
         (PackedUserOperation memory packedUserOp, bytes32 userOpHash) =
-            th.getTestUserOpData(thv.accAddress, "", address(0));
+            th.getTestUserOpData(thv.accAddress, "", "", address(0));
 
         bytes32 eip191 = MessageHashUtils.toEthSignedMessageHash(userOpHash);
         address actualSigner = ECDSA.recover(eip191, packedUserOp.signature);
@@ -52,43 +49,35 @@ contract AccountTest is Test {
 
     function testUserOpValidation() public {
         (PackedUserOperation memory packedUserOp, bytes32 userOpHash) =
-            th.getTestUserOpData(thv.accAddress, "", address(0));
+            th.getTestUserOpData(thv.accAddress, "", "", address(0));
 
         vm.prank(thv.config.entryPoint);
 
         uint256 validationData = thv.account.validateUserOp(packedUserOp, userOpHash, 1e9);
         assertEq(validationData, 0);
-
-        vm.stopPrank();
     }
 
     function testEntryPointCanExecuteCommands() public {
-        (PackedUserOperation memory packedUserOp,) = th.getTestUserOpData(thv.accAddress, "", address(0));
+        (PackedUserOperation memory packedUserOp,) = th.getTestUserOpData(thv.accAddress, "", "", address(0));
 
         PackedUserOperation[] memory ops = new PackedUserOperation[](1);
         ops[0] = packedUserOp;
 
         vm.deal(thv.accAddress, 1e18);
 
-        address randomUser = vm.randomAddress();
-
-        vm.prank(randomUser);
+        vm.prank(thv.config.wallet);
 
         IEntryPoint(thv.config.entryPoint).handleOps(ops, payable(thv.account.owner()));
         assertEq(thv.erc20.balanceOf(thv.accAddress), 100);
-
-        vm.stopPrank();
     }
 
     function testFactoryAccountCreation() public {
         address newAccount = thv.factory.createAccount(thv.config.wallet, thv.config.entryPoint);
 
-        vm.prank(IAbstractedAccount(newAccount).owner());
+        vm.prank(thv.config.wallet);
 
         vm.expectRevert(AbstractedAccount.AbstractedAccount_NotFromEntryPoint.selector);
         IAbstractedAccount(newAccount).execute(address(0), 0, "");
-
-        vm.stopPrank();
     }
 
     function testFactoryAccountCreationViaEntryPoint() public {
@@ -100,7 +89,7 @@ contract AccountTest is Test {
 
         initCode = abi.encodePacked(address(thv.factory), initCode);
 
-        (PackedUserOperation memory packedUserOp,) = th.getTestUserOpData(accountToBe, initCode, address(0));
+        (PackedUserOperation memory packedUserOp,) = th.getTestUserOpData(accountToBe, initCode, "", address(0));
 
         PackedUserOperation[] memory ops = new PackedUserOperation[](1);
         ops[0] = packedUserOp;
@@ -111,7 +100,5 @@ contract AccountTest is Test {
 
         IEntryPoint(thv.config.entryPoint).handleOps(ops, payable(thv.config.wallet));
         assertEq(thv.erc20.balanceOf(address(accountToBe)), 100);
-
-        vm.stopPrank();
     }
 }

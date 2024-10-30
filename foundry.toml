@@ -4,7 +4,8 @@ out = "out"
 libs = ["lib"]
 
 [fmt]
-sort_imports = true
+sort_imports = false
 multiline_func_header = "all"
+single_line_statement_blocks = "multi"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
